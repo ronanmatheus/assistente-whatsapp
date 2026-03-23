@@ -1,20 +1,18 @@
-import express from 'express'
+import express from "express";
 
-const app = express()
-app.use(express.json())
+const app = express();
+app.use(express.json());
 
-app.post('/webhook', async (req, res) => {
-  console.log('Mensagem recebida:')
-  console.log(req.body)
+app.get("/", (req, res) => {
+  res.send("Servidor rodando");
+});
 
-  res.sendStatus(200)
-})
+app.post("/webhook", (req, res) => {
+  console.log("Mensagem recebida:");
+  console.log(JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
 
-app.get('/', (req, res) => {
-  res.send('Servidor rodando')
-})
-
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`)
-})
+app.listen(8080, () => {
+  console.log("Servidor rodando na porta 8080");
+});
