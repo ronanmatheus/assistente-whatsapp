@@ -8,11 +8,11 @@ app.get("/", (req, res) => {
 });
 
 app.post("/webhook", (req, res) => {
-  console.log("Mensagem recebida:");
+  console.log("===== WEBHOOK RECEBIDO =====");
   console.log(JSON.stringify(req.body, null, 2));
   res.sendStatus(200);
 });
 
-app.listen(8080, () => {
-  console.log("Servidor rodando na porta 8080");
+app.listen(process.env.PORT || 8080, () => {
+  console.log(`Servidor rodando na porta ${process.env.PORT || 8080}`);
 });
