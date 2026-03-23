@@ -1,6 +1,7 @@
 {
   "name": "assistente-whatsapp",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend Z-API + OpenAI",
   "main": "server.js",
   "scripts": {
