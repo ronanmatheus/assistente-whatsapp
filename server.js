@@ -1,64 +1,47 @@
 import express from "express";
 import axios from "axios";
+import OpenAI from "openai";
 
 const app = express();
 app.use(express.json());
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
 const ZAPI_INSTANCE_ID = process.env.ZAPI_INSTANCE_ID;
 const ZAPI_INSTANCE_TOKEN = process.env.ZAPI_INSTANCE_TOKEN;
 const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN;
 
-const conversationMemory = new Map();
+const memory = new Map();
 
 function getHistory(phone) {
-  return conversationMemory.get(phone) || [];
+  return memory.get(phone) || [];
 }
 
 function saveHistory(phone, role, content) {
-  const history = conversationMemory.get(phone) || [];
+  const history = memory.get(phone) || [];
   history.push({ role, content });
 
-  if (history.length > 12) {
-    history.splice(0, history.length - 12);
+  if (history.length > 10) {
+    history.splice(0, history.length - 10);
   }
 
-  conversationMemory.set(phone, history);
+  memory.set(phone, history);
 }
 
 const SYSTEM_PROMPT = `
 Você é Carla, secretária virtual do Dr. Ronan Matheus, cirurgião bucomaxilofacial.
 
-Seu papel é atender pacientes pelo WhatsApp com linguagem humana, acolhedora, segura e profissional.
-
-Objetivos:
-- entender o motivo do contato
-- identificar se é nova consulta, retorno, pós-operatório, urgência ou dúvida administrativa
-- conduzir a conversa de forma breve e organizada
-- facilitar o agendamento
-- encaminhar casos complexos para atendimento humano
-
 Regras:
-- nunca faça diagnóstico
-- nunca prescreva medicamentos
-- nunca minimize sinais de urgência
-- em caso de dificuldade respiratória, sangramento importante, trauma facial importante, febre alta com piora ou edema progressivo, orientar atendimento imediato e avisar que a equipe deve ser acionada
-- não usar linguagem robótica
-- respostas curtas, claras e educadas
-- fazer uma pergunta por vez
-- coletar apenas o necessário
-- quando perceber que o caso precisa de avaliação médica específica, dizer que vai encaminhar para a equipe
-- quando o paciente quiser agendar, coletar:
-  nome completo,
-  motivo principal,
-  se já tem exames,
-  melhor dia/turno
-
-Tom de voz:
-- acolhedor
-- seguro
-- humano
-- profissional
+- Seja acolhedora, objetiva e humana.
+- Responda de forma curta e clara.
+- Ajude com nova consulta, retorno, pós-operatório e dúvidas administrativas.
+- Nunca faça diagnóstico.
+- Nunca prescreva medicamento.
+- Em caso de urgência, como falta de ar, sangramento importante, trauma facial relevante, febre alta com piora ou edema progressivo, oriente contato imediato com a equipe ou avaliação presencial.
+- Faça uma pergunta por vez.
+- Quando o paciente quiser agendar, peça nome completo, motivo principal e se já possui exames.
 `;
 
 app.get("/", (req, res) => {
@@ -81,36 +64,27 @@ app.post("/webhook", async (req, res) => {
     }
 
     saveHistory(telefone, "user", mensagem);
+
     const history = getHistory(telefone);
 
-    const inputMessages = [
+    const input = [
       {
         role: "system",
         content: SYSTEM_PROMPT
       },
-      ...history.map((item) => ({
+      ...history.map(item => ({
         role: item.role,
         content: item.content
       }))
     ];
 
-    const openaiResponse = await axios.post(
-      "https://api.openai.com/v1/responses",
-      {
-        model: "gpt-5.4-mini",
-        input: inputMessages
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${OPENAI_API_KEY}`
-        }
-      }
-    );
+    const response = await client.responses.create({
+      model: "gpt-5.4-mini",
+      input
+    });
 
     const resposta =
-      openaiResponse.data?.output?.[0]?.content?.[0]?.text ||
-      openaiResponse.data?.output_text ||
+      response.output_text?.trim() ||
       "Recebi sua mensagem e vou te ajudar por aqui.";
 
     saveHistory(telefone, "assistant", resposta);
@@ -129,10 +103,8 @@ app.post("/webhook", async (req, res) => {
       }
     );
   } catch (error) {
-    console.error(
-      "ERRO NO WEBHOOK:",
-      error.response?.data || error.message
-    );
+    console.error("ERRO NO WEBHOOK:");
+    console.error(error.response?.data || error.message || error);
   }
 });
 
