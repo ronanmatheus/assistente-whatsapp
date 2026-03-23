@@ -13,6 +13,8 @@ app.post("/webhook", (req, res) => {
   res.sendStatus(200);
 });
 
-app.listen(process.env.PORT || 8080, () => {
-  console.log(`Servidor rodando na porta ${process.env.PORT || 8080}`);
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
