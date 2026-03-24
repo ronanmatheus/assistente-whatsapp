@@ -592,11 +592,7 @@ app.post("/webhook", async (req, res) => {
     const phone = normalizePhone(rawPhone);
 
     if (!phone || !instanceId) {
-      console.log("⚠️ Dados insuficientes:", {
-        phone,
-        rawPhone,
-        instanceId
-      });
+      console.log("⚠️ Dados insuficientes:", { rawPhone, phone, instanceId });
       return;
     }
 
@@ -625,29 +621,15 @@ app.post("/webhook", async (req, res) => {
 
     if (classification === "DOCTOR" || looksLikeDoctorOrHospital(message)) {
       const handoffMessage = DOCTOR_HANDOFF_MESSAGE;
-
       await sendWhatsAppMessage(instanceId, phone, handoffMessage);
-      await notifyDrRonan(
-        instanceId,
-        phone,
-        senderName,
-        message,
-        "Contato profissional / sobreaviso / CHN"
-      );
+      await notifyDrRonan(instanceId, phone, senderName, message, "Contato profissional / sobreaviso / CHN");
       return;
     }
 
     if (classification === "URGENT" || looksUrgent(message)) {
       const urgentReply = URGENT_HANDOFF_MESSAGE;
-
       await sendWhatsAppMessage(instanceId, phone, urgentReply);
-      await notifyDrRonan(
-        instanceId,
-        phone,
-        senderName,
-        message,
-        "Urgência clínica"
-      );
+      await notifyDrRonan(instanceId, phone, senderName, message, "Urgência clínica");
       return;
     }
 
