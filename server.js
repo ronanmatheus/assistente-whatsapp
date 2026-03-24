@@ -98,10 +98,14 @@ function isInHumanTakeover(phone) {
 
   const now = Date.now();
 
-  // 5 minutos de bloqueio
-  if (now - startedAt < 1000 * 60 * 5) {
+  // 1 hora de bloqueio
+  if (now - startedAt < 1000 * 60 * 60) {
     return true;
   }
+
+  humanTakeover.delete(phone);
+  return false;
+}
 
   humanTakeover.delete(phone);
   return false;
