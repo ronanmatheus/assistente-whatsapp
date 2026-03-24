@@ -460,8 +460,7 @@ app.post("/webhook", async (req, res) => {
     const normalized = normalizeText(message);
 
     if (classification === "DOCTOR" || looksLikeDoctorOrHospital(message)) {
-      const handoffMessage =
-        "Recebi sua mensagem. Estou encaminhando isso imediatamente e diretamente ao Dr. Ronan.";
+      const handoffMessage = DOCTOR_HANDOFF_MESSAGE;
 
       await sendWhatsAppMessage(instanceId, phone, handoffMessage);
       await notifyDrRonan(instanceId, phone, senderName, message, "Contato profissional / sobreaviso / CHN");
@@ -469,8 +468,7 @@ app.post("/webhook", async (req, res) => {
     }
 
     if (classification === "URGENT" || looksUrgent(message)) {
-      const urgentReply =
-        "Entendi. Pelo que você me relatou, isso precisa de atenção mais rápida. Vou encaminhar sua mensagem com prioridade para o Dr. Ronan agora.";
+      const urgentReply = URGENT_HANDOFF_MESSAGE;
 
       await sendWhatsAppMessage(instanceId, phone, urgentReply);
       await notifyDrRonan(instanceId, phone, senderName, message, "Urgência clínica");
@@ -482,7 +480,7 @@ app.post("/webhook", async (req, res) => {
     let reply = await generateSecretaryReply(phone, message);
 
     if (normalized.includes("sobreaviso") || normalized.includes("chn")) {
-      reply = "Recebi sua mensagem. Estou encaminhando isso imediatamente e diretamente ao Dr. Ronan.";
+      reply = DOCTOR_HANDOFF_MESSAGE;
       await sendWhatsAppMessage(instanceId, phone, reply);
       await notifyDrRonan(instanceId, phone, senderName, message, "Sobreaviso / CHN");
       return;
