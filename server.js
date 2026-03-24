@@ -265,7 +265,7 @@ async function sendWhatsAppMessage(instanceId, phone, message) {
     throw new Error(`Telefone inválido para envio: ${phone}`);
   }
 
-  const url = `https://api.z-api.io/instances/${instanceId}/token/${ZAPI_INSTANCE_TOKEN}/send-text-message`;
+  const url = `https://api.z-api.io/instances/${instanceId}/token/${ZAPI_INSTANCE_TOKEN}/send-text`;
 
   const headers = {
     "Content-Type": "application/json"
