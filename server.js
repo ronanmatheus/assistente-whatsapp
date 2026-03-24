@@ -24,6 +24,23 @@ const openai = ENABLE_OPENAI
 const conversationMemory = new Map();
 const processedMessages = new Map();
 
+const conversationState = new Map();
+
+function getState(phone) {
+  return conversationState.get(phone) || {
+    stage: "START",
+    name: null,
+    reason: null,
+    hasExam: null
+  };
+}
+
+function updateState(phone, newData) {
+  const current = getState(phone);
+  const updated = { ...current, ...newData };
+  conversationState.set(phone, updated);
+}
+
 function getHistory(phone) {
   return conversationMemory.get(phone) || [];
 }
