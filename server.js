@@ -598,11 +598,14 @@ const senderName = req.body?.senderName || "";
 
     const phone = normalizePhone(rawPhone);
 
-    const isApiMessage = fromApi === true;
+    const isApiMessage =
+  fromApi === true ||
+  fromApi === "true" ||
+  fromApi === 1;
 
 const isManualHumanMessage =
-  fromMe === true &&
-  fromApi === false &&
+  (fromMe === true || fromMe === "true") &&
+  !isApiMessage &&
   typeof message === "string" &&
   message.trim() !== "";
 
@@ -641,12 +644,6 @@ console.log("DEBUG TAKEOVER:", {
   fromApi,
   message
 });    
-
-const isManualHumanMessage =
-  fromMe === true &&
-  fromApi === false &&
-  typeof message === "string" &&
-  message.trim() !== "";
 
 if (isManualHumanMessage) {
   activateHumanTakeover(phone);
