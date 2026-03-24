@@ -5,9 +5,9 @@ import OpenAI from "openai";
 const app = express();
 app.use(express.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 app.get("/", (req, res) => {
   res.send("Servidor rodando");
@@ -21,34 +21,43 @@ app.post("/webhook", async (req, res) => {
     const mensagem = req.body?.text?.message;
     const telefone = req.body?.phone;
     const fromMe = req.body?.fromMe;
+    const instanceId = req.body?.instanceId;
 
     res.sendStatus(200);
 
-    if (!telefone || !mensagem || fromMe === true) {
+    if (!telefone || !mensagem || fromMe === true || !instanceId) {
       return;
     }
 
-    const response = await openai.responses.create({
-      model: "gpt-5.4-mini",
-      input: [
-        {
-          role: "system",
-          content:
-            "Você é Carla, secretária virtual do Dr. Ronan Matheus, cirurgião bucomaxilofacial. Seja acolhedora, objetiva e humana. Nunca faça diagnóstico. Em caso de urgência, como falta de ar, sangramento importante, trauma facial importante ou edema progressivo, oriente contato imediato com a equipe."
-        },
-        {
-          role: "user",
-          content: mensagem
-        }
-      ]
-    });
+    let resposta = "Recebi sua mensagem e vou te ajudar por aqui.";
 
-    const resposta =
-      response.output_text?.trim() ||
-      "Recebi sua mensagem e vou te ajudar por aqui.";
+    if (openai) {
+      const response = await openai.responses.create({
+        model: "gpt-5.4-mini",
+        input: [
+          {
+            role: "system",
+            content:
+              "Você é Carla, secretária virtual do Dr. Ronan Matheus, cirurgião bucomaxilofacial. Seja acolhedora, objetiva e humana. Nunca faça diagnóstico."
+          },
+          {
+            role: "user",
+            content: mensagem
+          }
+        ]
+      });
+
+      resposta = response.output_text?.trim() || resposta;
+    } else {
+      console.log("⚠️ OPENAI_API_KEY não configurada. Respondendo sem IA.");
+    }
+
+    const zapiUrl = `https://api.z-api.io/instances/${instanceId}/token/${process.env.ZAPI_INSTANCE_TOKEN}/send-text`;
+
+    console.log("Enviando resposta para:", zapiUrl);
 
     await axios.post(
-      `https://api.z-api.io/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_INSTANCE_TOKEN}/send-text`,
+      zapiUrl,
       {
         phone: telefone,
         message: resposta
@@ -56,10 +65,12 @@ app.post("/webhook", async (req, res) => {
       {
         headers: {
           "Content-Type": "application/json",
-          "Client-Token": process.env.ZAPI_CLIENT_TOKEN
+          "Client-Token": process.env.ZAPI_CLIENT_TOKEN || ""
         }
       }
     );
+
+    console.log("✅ Resposta enviada com sucesso");
   } catch (error) {
     console.error("ERRO NO WEBHOOK:");
     console.error(error.response?.data || error.message || error);
@@ -67,7 +78,6 @@ app.post("/webhook", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log("Servidor rodando na porta " + PORT);
 });
