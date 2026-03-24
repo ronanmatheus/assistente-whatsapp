@@ -52,7 +52,7 @@ app.post("/webhook", async (req, res) => {
       console.log("⚠️ OPENAI_API_KEY não configurada. Respondendo sem IA.");
     }
 
-    const zapiUrl = `https://api.z-api.io/instances/${instanceId}/token/${process.env.ZAPI_INSTANCE_TOKEN}/send-text`;
+    const zapiUrl = `https://api.z-api.io/instances/${instanceId}/token/${process.env.ZAPI_INSTANCE_TOKEN}/send-text-message`;
 
     console.log("Enviando resposta para:", zapiUrl);
 
