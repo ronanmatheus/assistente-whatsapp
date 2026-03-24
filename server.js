@@ -569,10 +569,16 @@ app.get("/", (req, res) => {
   res.send("Servidor rodando");
 });
 
-app.post("/webhook", async (req, res) => {
+app.post("/", async (req, res) => {
   try {
-    console.log("===== WEBHOOK RECEBIDO =====");
-    console.log(JSON.stringify(req.body, null, 2));
+    console.log("===== RECEBIDO =====");
+console.log(JSON.stringify(req.body, null, 2));
+
+console.log("DEBUG:", {
+  fromMe: req.body?.fromMe,
+  fromApi: req.body?.fromApi,
+  message: req.body?.text?.message
+});   
 
 const eventType = req.body?.type;
 const messageId = req.body?.messageId;
@@ -591,6 +597,38 @@ const senderName = req.body?.senderName || "";
     }
 
     const phone = normalizePhone(rawPhone);
+
+    const isApiMessage = fromApi === true;
+
+const isManualHumanMessage =
+  fromMe === true &&
+  fromApi === false &&
+  typeof message === "string" &&
+  message.trim() !== "";
+
+// 🔴 IGNORA mensagens da API (ESSENCIAL PRA PARAR LOOP)
+if (isApiMessage) {
+  console.log("⛔ Ignorado (mensagem da API):", {
+    phone,
+    fromMe,
+    fromApi,
+    message
+  });
+  return;
+}
+
+// 👨‍⚕️ ATIVA takeover apenas quando VOCÊ digita no WhatsApp
+if (isManualHumanMessage) {
+  activateHumanTakeover(phone);
+  console.log("👨‍⚕️ Takeover manual ativado:", phone);
+  return;
+}
+
+// ⛔ IA pausada durante atendimento humano
+if (isInHumanTakeover(phone)) {
+  console.log("⛔ IA pausada:", phone);
+  return;
+}
 
     if (!phone || !instanceId) {
       console.log("⚠️ Dados insuficientes:", { rawPhone, phone, instanceId });
@@ -654,7 +692,7 @@ if (isManualHumanMessage) {
     saveHistory(phone, "assistant", reply);
     await sendWhatsAppMessage(instanceId, phone, reply);
   } catch (error) {
-    console.error("ERRO NO WEBHOOK:");
+    console.error("ERRO NO :");
     console.error(error.response?.data || error.message || error);
   }
 });
