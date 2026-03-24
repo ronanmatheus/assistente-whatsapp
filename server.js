@@ -107,10 +107,6 @@ function isInHumanTakeover(phone) {
   return false;
 }
 
-  humanTakeover.delete(phone);
-  return false;
-}
-
 function clearHumanTakeover(phone) {
   humanTakeover.delete(phone);
 }
