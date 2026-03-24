@@ -568,26 +568,25 @@ ${instructionMap[stageInstruction] || "Responda de forma acolhedora e útil."}`
 app.get("/", (req, res) => {
   res.send("Servidor rodando");
 });
-
-app.post("/", async (req, res) => {
+app.post("/webhook", async (req, res) => {
   try {
     console.log("===== RECEBIDO =====");
-console.log(JSON.stringify(req.body, null, 2));
+    console.log(JSON.stringify(req.body, null, 2));
 
-console.log("DEBUG:", {
-  fromMe: req.body?.fromMe,
-  fromApi: req.body?.fromApi,
-  message: req.body?.text?.message
-});   
+    console.log("DEBUG:", {
+      fromMe: req.body?.fromMe,
+      fromApi: req.body?.fromApi,
+      message: req.body?.text?.message
+    });
 
-const eventType = req.body?.type;
-const messageId = req.body?.messageId;
-const message = req.body?.text?.message || "";
-const rawPhone = req.body?.phone;
-const fromMe = req.body?.fromMe;
-const fromApi = req.body?.fromApi;
-const instanceId = req.body?.instanceId;
-const senderName = req.body?.senderName || "";
+    const eventType = req.body?.type;
+    const messageId = req.body?.messageId;
+    const message = req.body?.text?.message || "";
+    const rawPhone = req.body?.phone;
+    const fromMe = req.body?.fromMe;
+    const fromApi = req.body?.fromApi;
+    const instanceId = req.body?.instanceId;
+    const senderName = req.body?.senderName || "";
 
     res.sendStatus(200);
 
@@ -598,61 +597,49 @@ const senderName = req.body?.senderName || "";
 
     const phone = normalizePhone(rawPhone);
 
-    const isApiMessage =
-  fromApi === true ||
-  fromApi === "true" ||
-  fromApi === 1;
-
-const isManualHumanMessage =
-  (fromMe === true || fromMe === "true") &&
-  !isApiMessage &&
-  typeof message === "string" &&
-  message.trim() !== "";
-
-// 🔴 IGNORA mensagens da API (ESSENCIAL PRA PARAR LOOP)
-if (isApiMessage) {
-  console.log("⛔ Ignorado (mensagem da API):", {
-    phone,
-    fromMe,
-    fromApi,
-    message
-  });
-  return;
-}
-
-// 👨‍⚕️ ATIVA takeover apenas quando VOCÊ digita no WhatsApp
-if (isManualHumanMessage) {
-  activateHumanTakeover(phone);
-  console.log("👨‍⚕️ Takeover manual ativado:", phone);
-  return;
-}
-
-// ⛔ IA pausada durante atendimento humano
-if (isInHumanTakeover(phone)) {
-  console.log("⛔ IA pausada:", phone);
-  return;
-}
-
     if (!phone || !instanceId) {
       console.log("⚠️ Dados insuficientes:", { rawPhone, phone, instanceId });
       return;
     }
 
-console.log("DEBUG TAKEOVER:", {
-  phone,
-  fromMe,
-  fromApi,
-  message
-});    
+    const isApiMessage =
+      (fromMe === true || fromMe === "true") &&
+      (fromApi === true || fromApi === "true" || fromApi === 1);
 
-if (isManualHumanMessage) {
-  activateHumanTakeover(phone);
-  console.log("👨‍⚕️ Atendimento manual ativado para:", phone);
-  return;
-}
+    const isManualHumanMessage =
+      (fromMe === true || fromMe === "true") &&
+      !isApiMessage &&
+      typeof message === "string" &&
+      message.trim() !== "";
+
+    console.log("DEBUG TAKEOVER:", {
+      phone,
+      fromMe,
+      fromApi,
+      message,
+      isApiMessage,
+      isManualHumanMessage,
+      inTakeover: isInHumanTakeover(phone)
+    });
+
+    if (isApiMessage) {
+      console.log("⛔ Ignorado (mensagem da API):", {
+        phone,
+        fromMe,
+        fromApi,
+        message
+      });
+      return;
+    }
+
+    if (isManualHumanMessage) {
+      activateHumanTakeover(phone);
+      console.log("👨‍⚕️ Takeover manual ativado:", phone);
+      return;
+    }
 
     if (isInHumanTakeover(phone)) {
-      console.log("⛔ IA pausada (atendimento humano ativo):", phone);
+      console.log("⛔ IA pausada:", phone);
       return;
     }
 
@@ -666,19 +653,36 @@ if (isManualHumanMessage) {
       return;
     }
 
+    if (message.trim().toLowerCase() === "menu") {
+      clearHumanTakeover(phone);
+      console.log("✅ Takeover limpo manualmente para:", phone);
+    }
+
     const classification = await classifyMessage(message);
 
     if (classification === "DOCTOR" || looksLikeDoctorOrHospital(message)) {
       const handoffMessage = DOCTOR_HANDOFF_MESSAGE;
       await sendWhatsAppMessage(instanceId, phone, handoffMessage);
-      await notifyDrRonan(instanceId, phone, senderName, message, "Contato profissional / sobreaviso / CHN");
+      await notifyDrRonan(
+        instanceId,
+        phone,
+        senderName,
+        message,
+        "Contato profissional / sobreaviso / CHN"
+      );
       return;
     }
 
     if (classification === "URGENT" || looksUrgent(message)) {
       const urgentReply = URGENT_HANDOFF_MESSAGE;
       await sendWhatsAppMessage(instanceId, phone, urgentReply);
-      await notifyDrRonan(instanceId, phone, senderName, message, "Urgência clínica");
+      await notifyDrRonan(
+        instanceId,
+        phone,
+        senderName,
+        message,
+        "Urgência clínica"
+      );
       return;
     }
 
@@ -689,7 +693,7 @@ if (isManualHumanMessage) {
     saveHistory(phone, "assistant", reply);
     await sendWhatsAppMessage(instanceId, phone, reply);
   } catch (error) {
-    console.error("ERRO NO :");
+    console.error("ERRO NO WEBHOOK:");
     console.error(error.response?.data || error.message || error);
   }
 });
