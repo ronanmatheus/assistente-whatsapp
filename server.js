@@ -159,6 +159,10 @@ function normalizeText(text = "") {
     .trim();
 }
 
+function normalizePhone(value = "") {
+  return String(value).replace(/\D/g, "");
+}
+
 function looksLikeDoctorOrHospital(text) {
   const t = normalizeText(text);
 
@@ -255,6 +259,12 @@ async function classifyMessage(message) {
 }
 
 async function sendWhatsAppMessage(instanceId, phone, message) {
+  const normalizedPhone = normalizePhone(phone);
+
+  if (!normalizedPhone) {
+    throw new Error(`Telefone inválido para envio: ${phone}`);
+  }
+
   const url = `https://api.z-api.io/instances/${instanceId}/token/${ZAPI_INSTANCE_TOKEN}/send-text-message`;
 
   const headers = {
@@ -270,7 +280,7 @@ async function sendWhatsAppMessage(instanceId, phone, message) {
   const result = await axios.post(
     url,
     {
-      phone,
+      phone: normalizedPhone,
       message
     },
     { headers }
@@ -348,19 +358,40 @@ app.post("/webhook", async (req, res) => {
     console.log("===== WEBHOOK RECEBIDO =====");
     console.log(JSON.stringify(req.body, null, 2));
 
+    const eventType = req.body?.type;
     const messageId = req.body?.messageId;
     const message = req.body?.text?.message;
-    const phone = req.body?.phone;
+    const rawPhone = req.body?.phone;
     const fromMe = req.body?.fromMe;
     const instanceId = req.body?.instanceId;
     const senderName = req.body?.senderName || "";
 
     res.sendStatus(200);
 
-    if (!phone || !message || !instanceId) return;
-    if (fromMe === true) return;
+    if (eventType !== "ReceivedCallback") {
+      console.log("⚠️ Evento ignorado:", eventType);
+      return;
+    }
+
+    if (fromMe === true) {
+      console.log("⚠️ Mensagem enviada pela própria instância ignorada");
+      return;
+    }
+
     if (alreadyProcessed(messageId)) {
       console.log("⚠️ Mensagem duplicada ignorada:", messageId);
+      return;
+    }
+
+    const phone = normalizePhone(rawPhone);
+
+    if (!phone || !message || !instanceId) {
+      console.log("⚠️ Dados insuficientes:", {
+        phone,
+        rawPhone,
+        message,
+        instanceId
+      });
       return;
     }
 
