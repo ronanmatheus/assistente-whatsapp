@@ -263,6 +263,15 @@ function normalizePhone(value = "") {
   return String(value).replace(/\D/g, "");
 }
 
+function getConversationKey(body = {}) {
+  return String(
+    body?.chatLid ||
+    body?.chatId ||
+    body?.phone ||
+    ""
+  ).trim();
+}
+
 function looksLikeDoctorOrHospital(text) {
   const t = normalizeText(text);
 
