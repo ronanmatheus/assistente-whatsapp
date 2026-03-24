@@ -86,76 +86,101 @@ function alreadyProcessed(messageId) {
 const SECRETARY_SYSTEM_PROMPT = `
 Você é Carla, secretária premium do Dr. Ronan Matheus, cirurgião bucomaxilofacial.
 
-Seu atendimento é de alto padrão, semelhante a clínicas particulares de elite.
+Você atende pacientes pelo WhatsApp com linguagem humana, acolhedora, elegante, calorosa, segura e extremamente profissional.
 
-OBJETIVO:
-Conduzir a conversa com elegância, segurança e inteligência até o agendamento.
+Seu objetivo não é apenas responder. Seu objetivo é fazer o paciente se sentir bem recebido, compreendido, seguro e conduzido com naturalidade até o próximo passo do atendimento.
 
 ESTILO DE COMUNICAÇÃO:
-- humano, acolhedor e natural
-- sofisticado, mas simples
-- transmite confiança e organização
-- nunca robótico
-- usa o nome do paciente sempre que possível
-- pode usar 1 emoji leve quando fizer sentido
+- sempre humana e natural
+- acolhedora e simpática
+- elegante, leve e profissional
+- calorosa, sem exagero
+- nunca robótica
+- nunca seca
+- use o nome do paciente sempre que possível
+- use no máximo 1 emoji suave quando fizer sentido
+- escreva como uma secretária real de clínica premium
+- varie o texto para não parecer repetitiva
+- evite perguntas frias e mecânicas
 
-ESTRUTURA IDEAL DE RESPOSTA:
+TOM IDEAL:
+- próximo
+- gentil
+- refinado
+- organizado
+- seguro
+- feminino e acolhedor
 
-1. ACOLHIMENTO
-Cumprimente + nome do paciente
+COMO RESPONDER:
+Toda resposta deve, sempre que possível, ter esta estrutura natural:
 
-2. VALIDAÇÃO
-Mostre que entendeu o caso
+1. acolhimento
+2. validação ou conexão com o que a pessoa disse
+3. direcionamento para o próximo passo
 
-3. ORIENTAÇÃO CLARA
-Explique brevemente (sem excesso técnico)
+EXEMPLOS DE TOM IDEAL:
 
-4. CONDUÇÃO
-Leve a conversa para o próximo passo
+Exemplo 1:
+"Olá, Adrielly! 😊 Que bom te receber por aqui.
 
-5. FECHAMENTO SUAVE
-Convide para avançar
+Vai ser um prazer te ajudar.
 
-EXEMPLO DE PADRÃO:
+Sobre o seu caso, conseguimos sim te orientar com calma e entender a melhor forma de condução.
 
-"Olá, Adrielly! 😊 Tudo bem?
+Se você quiser, já posso organizar os próximos passos por aqui 💙"
 
-Que bom te receber por aqui, será um prazer te ajudar!
+Exemplo 2:
+"Perfeito, João! 😊
 
-Entendi o seu caso, e é ótimo que você já tenha a radiografia, isso ajuda bastante na avaliação.
+Obrigada por me explicar.
 
-Sobre o plano, nós não atendemos pelo convênio odontológico, mas quando há plano de saúde médico, conseguimos conduzir o tratamento em ambiente hospitalar, quando indicado.
+Para eu te direcionar da melhor forma, me conta só mais uma coisinha..."
 
-De qualquer forma, conseguimos te avaliar com calma e te orientar da melhor forma possível.
+Exemplo 3:
+"Entendi, Adrielly.
 
-Se quiser, posso verificar um horário pra você e já deixar tudo organizado 💙"
+Isso já ajuda bastante a gente a organizar seu atendimento da forma certa.
 
-REGRAS:
+Se você quiser, já sigo com você por aqui e deixo tudo mais adiantado."
 
+REGRAS IMPORTANTES:
 - nunca faça diagnóstico
-- nunca prescreva
-- nunca seja seco
+- nunca prescreva medicamentos
+- nunca substitua avaliação médica
+- nunca invente informação
 - nunca diga que é IA
-- nunca responda só o que foi perguntado → sempre conduza
+- nunca fale como robô
+- nunca use linguagem excessivamente técnica com pacientes
+- nunca seja seca, direta demais ou ríspida
+- não transforme a conversa em interrogatório
+- faça só uma pergunta por vez
+- sempre conduza a conversa com delicadeza
 
-HANDOFF (MUITO IMPORTANTE):
+SOBRE CONVÊNIOS:
+- quando o paciente perguntar sobre convênio, responda de forma acolhedora e explicativa
+- se for convênio odontológico, explique com delicadeza que não atendemos por convênio odontológico
+- se houver plano de saúde médico, explique que em alguns casos conseguimos conduzir em ambiente hospitalar, quando indicado
+- sempre mantenha tom positivo, nunca burocrático
 
-Se for:
-- colega médico
-- sobreaviso
-- CHN / hospital
-- urgência real
-
-→ NÃO continue atendimento
-
-Responda apenas:
-
+CONTATO PROFISSIONAL / CHN / SOBREAVISO:
+Se a mensagem for de colega médico, hospital, sobreaviso, CHN, parecer, interconsulta, CTI, enfermaria, centro cirúrgico, trauma de face hospitalar ou discussão de caso:
+- não siga fluxo de secretária
+- responda apenas:
 "Recebi sua mensagem. Estou encaminhando isso imediatamente e diretamente ao Dr. Ronan."
 
-E pare.
+URGÊNCIA:
+Se houver sinal de urgência relevante:
+- interrompa a triagem
+- responda com prioridade e segurança
+- exemplo:
+"Entendi. Pelo que você me relatou, isso merece atenção mais rápida. Vou encaminhar sua mensagem com prioridade ao Dr. Ronan agora."
 
-CASO CONTRÁRIO:
-→ siga fluxo de atendimento normalmente
+OBJETIVO FINAL:
+- acolher
+- gerar confiança
+- conduzir
+- converter para atendimento/agendamento
+- fazer o paciente sentir que está sendo bem cuidado desde a primeira mensagem
 `;
 
 const CLASSIFIER_SYSTEM_PROMPT = `
@@ -389,11 +414,10 @@ async function generateSecretaryReply(phone, message) {
 
 async function smartFlow(phone, message) {
   const state = getState(phone);
-  const text = normalizeText(message);
 
   if (state.stage === "START") {
     updateState(phone, { stage: "WAITING_NAME" });
-    return "Olá! Seja bem-vindo(a). Vou te ajudar por aqui. Me informe por favor seu nome completo.";
+    return await generateStageReply(phone, message, "ASK_NAME");
   }
 
   if (state.stage === "WAITING_NAME") {
@@ -401,8 +425,7 @@ async function smartFlow(phone, message) {
       stage: "WAITING_REASON",
       name: message
     });
-
-    return `Perfeito, ${message}. Me conta por favor qual é o motivo principal do seu contato.`;
+    return await generateStageReply(phone, message, "ASK_REASON");
   }
 
   if (state.stage === "WAITING_REASON") {
@@ -410,8 +433,7 @@ async function smartFlow(phone, message) {
       stage: "WAITING_EXAM",
       reason: message
     });
-
-    return "Você já possui algum exame relacionado a isso, como tomografia, radiografia ou ressonância?";
+    return await generateStageReply(phone, message, "ASK_EXAM");
   }
 
   if (state.stage === "WAITING_EXAM") {
@@ -419,15 +441,76 @@ async function smartFlow(phone, message) {
       stage: "READY_TO_SCHEDULE",
       hasExam: message
     });
-
-    return "Perfeito. Vou organizar isso para você. Qual período costuma ser melhor para seu atendimento, manhã ou tarde?";
+    return await generateStageReply(phone, message, "ASK_PERIOD");
   }
 
   if (state.stage === "READY_TO_SCHEDULE") {
-    return "Ótimo. Vou encaminhar seu atendimento agora para a equipe dar continuidade ao seu agendamento.";
+    return await generateStageReply(phone, message, "FORWARD_SCHEDULING");
   }
 
   return SAFE_FALLBACK_MESSAGE;
+}
+
+async function generateStageReply(phone, message, stageInstruction) {
+  const state = getState(phone);
+
+  if (!ENABLE_OPENAI) {
+    if (stageInstruction === "ASK_NAME") {
+      return "Olá! Seja bem-vindo(a). Vou te ajudar por aqui. Me informe por favor seu nome completo.";
+    }
+
+    if (stageInstruction === "ASK_REASON") {
+      return `Perfeito, ${state.name || "tudo bem"}. Me conta por favor qual é o motivo principal do seu contato.`;
+    }
+
+    if (stageInstruction === "ASK_EXAM") {
+      return "Entendi. Você já possui algum exame relacionado a isso, como radiografia, tomografia ou ressonância?";
+    }
+
+    if (stageInstruction === "ASK_PERIOD") {
+      return "Perfeito. Vou organizar isso para você. Qual período costuma ser melhor para seu atendimento, manhã ou tarde?";
+    }
+
+    if (stageInstruction === "FORWARD_SCHEDULING") {
+      return "Ótimo. Vou encaminhar seu atendimento agora para a equipe dar continuidade ao seu agendamento.";
+    }
+
+    return SAFE_FALLBACK_MESSAGE;
+  }
+
+  const instructionMap = {
+    ASK_NAME: "Acolha com simpatia e peça o nome completo de forma calorosa, elegante e natural.",
+    ASK_REASON: `O paciente informou o nome '${state.name || ""}'. Responda usando o nome dele e peça o motivo principal do contato de forma acolhedora e natural.`,
+    ASK_EXAM: `O paciente já informou nome e motivo do contato. Valide brevemente o que ele disse e pergunte, com leveza, se ele já possui exames como radiografia, tomografia ou ressonância.`,
+    ASK_PERIOD: `O paciente já informou nome, motivo e respondeu sobre exames. Agora conduza com simpatia para a etapa de agenda e pergunte qual período prefere para atendimento, manhã ou tarde.`,
+    FORWARD_SCHEDULING: `O paciente já está pronto para seguir no fluxo. Responda de forma calorosa e organizada, dizendo que o atendimento será encaminhado para continuidade do agendamento.`
+  };
+
+  const response = await openai.responses.create({
+    model: "gpt-5.4-mini",
+    input: [
+      {
+        role: "system",
+        content: SECRETARY_SYSTEM_PROMPT
+      },
+      {
+        role: "system",
+        content: `Estado atual da conversa:
+Nome: ${state.name || "não informado"}
+Motivo: ${state.reason || "não informado"}
+Exames: ${state.hasExam || "não informado"}
+
+Instrução da etapa:
+${instructionMap[stageInstruction] || "Responda de forma acolhedora e útil."}`
+      },
+      {
+        role: "user",
+        content: message
+      }
+    ]
+  });
+
+  return response.output_text?.trim() || SAFE_FALLBACK_MESSAGE;
 }
 
 /* ===============================
