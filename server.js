@@ -423,6 +423,49 @@ async function generateSecretaryReply(phone, message) {
   return reply;
 }
 
+async function smartFlow(phone, message) {
+  const state = getState(phone);
+  const text = normalizeText(message);
+
+  if (state.stage === "START") {
+    updateState(phone, { stage: "WAITING_NAME" });
+    return "Olá! Seja bem-vindo(a). Vou te ajudar por aqui. Me informe por favor seu nome completo.";
+  }
+
+  if (state.stage === "WAITING_NAME") {
+    updateState(phone, {
+      stage: "WAITING_REASON",
+      name: message
+    });
+
+    return `Perfeito, ${message}. Me conta por favor qual é o motivo principal do seu contato.`;
+  }
+
+  if (state.stage === "WAITING_REASON") {
+    updateState(phone, {
+      stage: "WAITING_EXAM",
+      reason: message
+    });
+
+    return "Você já possui algum exame relacionado a isso, como tomografia, radiografia ou ressonância?";
+  }
+
+  if (state.stage === "WAITING_EXAM") {
+    updateState(phone, {
+      stage: "READY_TO_SCHEDULE",
+      hasExam: message
+    });
+
+    return "Perfeito. Vou organizar isso para você. Qual período costuma ser melhor para seu atendimento, manhã ou tarde?";
+  }
+
+  if (state.stage === "READY_TO_SCHEDULE") {
+    return "Ótimo. Vou encaminhar seu atendimento agora para a equipe dar continuidade ao seu agendamento.";
+  }
+
+  return SAFE_FALLBACK_MESSAGE;
+}
+
 /* ===============================
    ROTAS
 ================================= */
@@ -494,7 +537,7 @@ app.post("/webhook", async (req, res) => {
 
     saveHistory(phone, "user", message);
 
-    let reply = await generateSecretaryReply(phone, message);
+    let reply = await smartFlow(phone, message);
 
     if (normalized.includes("sobreaviso") || normalized.includes("chn")) {
       reply = DOCTOR_HANDOFF_MESSAGE;
