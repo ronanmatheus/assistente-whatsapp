@@ -98,7 +98,8 @@ function isInHumanTakeover(phone) {
 
   const now = Date.now();
 
-  if (now - startedAt < 1000 * 60 * 60) {
+  // 5 minutos de bloqueio
+  if (now - startedAt < 1000 * 60 * 5) {
     return true;
   }
 
@@ -575,7 +576,7 @@ app.post("/webhook", async (req, res) => {
 
     const eventType = req.body?.type;
     const messageId = req.body?.messageId;
-    const message = req.body?.text?.message;
+    const message = req.body?.text?.message || "";
     const rawPhone = req.body?.phone;
     const fromMe = req.body?.fromMe;
     const instanceId = req.body?.instanceId;
@@ -588,42 +589,51 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
+    const phone = normalizePhone(rawPhone);
+
+    if (!phone || !instanceId) {
+      console.log("⚠️ Dados insuficientes:", {
+        phone,
+        rawPhone,
+        instanceId
+      });
+      return;
+    }
+
     if (fromMe === true) {
-  humanTakeover.set(phone, Date.now());
-  console.log("👨‍⚕️ Atendimento manual ativado para:", phone);
-  return;
-}
+      activateHumanTakeover(phone);
+      console.log("👨‍⚕️ Atendimento manual ativado para:", phone);
+      return;
+    }
 
     if (isInHumanTakeover(phone)) {
-  console.log("⛔ IA pausada (atendimento humano ativo):", phone);
-  return;
-}
+      console.log("⛔ IA pausada (atendimento humano ativo):", phone);
+      return;
+    }
 
     if (alreadyProcessed(messageId)) {
       console.log("⚠️ Mensagem duplicada ignorada:", messageId);
       return;
     }
 
-    const phone = normalizePhone(rawPhone);
-
-    if (!phone || !message || !instanceId) {
-      console.log("⚠️ Dados insuficientes:", {
-        phone,
-        rawPhone,
-        message,
-        instanceId
-      });
+    if (!message) {
+      console.log("⚠️ Mensagem vazia");
       return;
     }
 
     const classification = await classifyMessage(message);
-    const normalized = normalizeText(message);
 
     if (classification === "DOCTOR" || looksLikeDoctorOrHospital(message)) {
       const handoffMessage = DOCTOR_HANDOFF_MESSAGE;
 
       await sendWhatsAppMessage(instanceId, phone, handoffMessage);
-      await notifyDrRonan(instanceId, phone, senderName, message, "Contato profissional / sobreaviso / CHN");
+      await notifyDrRonan(
+        instanceId,
+        phone,
+        senderName,
+        message,
+        "Contato profissional / sobreaviso / CHN"
+      );
       return;
     }
 
@@ -631,13 +641,19 @@ app.post("/webhook", async (req, res) => {
       const urgentReply = URGENT_HANDOFF_MESSAGE;
 
       await sendWhatsAppMessage(instanceId, phone, urgentReply);
-      await notifyDrRonan(instanceId, phone, senderName, message, "Urgência clínica");
+      await notifyDrRonan(
+        instanceId,
+        phone,
+        senderName,
+        message,
+        "Urgência clínica"
+      );
       return;
     }
 
     saveHistory(phone, "user", message);
 
-    let reply = await smartFlow(phone, message);
+    const reply = await smartFlow(phone, message);
 
     saveHistory(phone, "assistant", reply);
     await sendWhatsAppMessage(instanceId, phone, reply);
