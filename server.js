@@ -23,8 +23,8 @@ const openai = ENABLE_OPENAI
 
 const conversationMemory = new Map();
 const processedMessages = new Map();
-
 const conversationState = new Map();
+const humanTakeover = new Map();
 
 function getState(phone) {
   return conversationState.get(phone) || {
@@ -41,6 +41,10 @@ function updateState(phone, newData) {
   conversationState.set(phone, updated);
 }
 
+function clearState(phone) {
+  conversationState.delete(phone);
+}
+
 function getHistory(phone) {
   return conversationMemory.get(phone) || [];
 }
@@ -54,6 +58,10 @@ function saveHistory(phone, role, content) {
   }
 
   conversationMemory.set(phone, history);
+}
+
+function clearHistory(phone) {
+  conversationMemory.delete(phone);
 }
 
 function alreadyProcessed(messageId) {
@@ -77,6 +85,29 @@ function alreadyProcessed(messageId) {
   }
 
   return false;
+}
+
+function activateHumanTakeover(phone) {
+  if (!phone) return;
+  humanTakeover.set(phone, Date.now());
+}
+
+function isInHumanTakeover(phone) {
+  const startedAt = humanTakeover.get(phone);
+  if (!startedAt) return false;
+
+  const now = Date.now();
+
+  if (now - startedAt < 1000 * 60 * 60) {
+    return true;
+  }
+
+  humanTakeover.delete(phone);
+  return false;
+}
+
+function clearHumanTakeover(phone) {
+  humanTakeover.delete(phone);
 }
 
 /* ===============================
@@ -558,9 +589,15 @@ app.post("/webhook", async (req, res) => {
     }
 
     if (fromMe === true) {
-      console.log("⚠️ Mensagem enviada pela própria instância ignorada");
-      return;
-    }
+  humanTakeover.set(phone, Date.now());
+  console.log("👨‍⚕️ Atendimento manual ativado para:", phone);
+  return;
+}
+
+    if (isInHumanTakeover(phone)) {
+  console.log("⛔ IA pausada (atendimento humano ativo):", phone);
+  return;
+}
 
     if (alreadyProcessed(messageId)) {
       console.log("⚠️ Mensagem duplicada ignorada:", messageId);
