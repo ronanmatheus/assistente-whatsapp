@@ -271,6 +271,60 @@ function getConversationKey(body = {}) {
     ""
   ).trim();
 }
+function looksLikePersonName(text = "") {
+  const value = normalizeText(text);
+
+  if (!value) return false;
+
+  const blocked = [
+    "ok",
+    "okay",
+    "ola",
+    "oi",
+    "bom dia",
+    "boa tarde",
+    "boa noite",
+    "sim",
+    "nao",
+    "não",
+    "esta bem",
+    "está bem",
+    "tudo bem",
+    "quero marcar uma consulta",
+    "consulta",
+    "quero marcar",
+    "amil",
+    "plano",
+    "nao tenho",
+    "não tenho",
+    "manha",
+    "manhã",
+    "tarde"
+  ];
+
+  if (blocked.includes(value)) return false;
+
+  const parts = value.split(" ").filter(Boolean);
+
+  if (parts.length < 2) return false;
+
+  return parts.every(part => /^[a-zà-ÿ]+$/i.test(part));
+}
+
+function getAvailableThursdaySlots() {
+  return [
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30"
+  ];
+}
 
 function looksLikeDoctorOrHospital(text) {
   const t = normalizeText(text);
@@ -477,13 +531,20 @@ async function smartFlow(phone, message) {
     return await generateStageReply(phone, message, "ASK_NAME");
   }
 
-  if (state.stage === "WAITING_NAME") {
-    updateState(phone, {
-      stage: "WAITING_REASON",
-      name: message
-    });
-    return await generateStageReply(phone, message, "ASK_REASON");
+if (state.stage === "WAITING_NAME") {
+
+  // 🚫 Evita respostas tipo "ok", "tudo bem", etc
+  if (!looksLikePersonName(message)) {
+    return "Perfeito 😊 Me informa, por favor, seu nome completo para eu seguir com seu atendimento.";
   }
+
+  updateState(phone, {
+    stage: "WAITING_REASON",
+    name: message
+  });
+
+  return await generateStageReply(phone, message, "ASK_REASON");
+}
 
   if (state.stage === "WAITING_REASON") {
     updateState(phone, {
