@@ -574,13 +574,14 @@ app.post("/webhook", async (req, res) => {
     console.log("===== WEBHOOK RECEBIDO =====");
     console.log(JSON.stringify(req.body, null, 2));
 
-    const eventType = req.body?.type;
-    const messageId = req.body?.messageId;
-    const message = req.body?.text?.message || "";
-    const rawPhone = req.body?.phone;
-    const fromMe = req.body?.fromMe;
-    const instanceId = req.body?.instanceId;
-    const senderName = req.body?.senderName || "";
+const eventType = req.body?.type;
+const messageId = req.body?.messageId;
+const message = req.body?.text?.message || "";
+const rawPhone = req.body?.phone;
+const fromMe = req.body?.fromMe;
+const fromApi = req.body?.fromApi;
+const instanceId = req.body?.instanceId;
+const senderName = req.body?.senderName || "";
 
     res.sendStatus(200);
 
@@ -596,11 +597,24 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    if (fromMe === true) {
-      activateHumanTakeover(phone);
-      console.log("👨‍⚕️ Atendimento manual ativado para:", phone);
-      return;
-    }
+console.log("DEBUG TAKEOVER:", {
+  phone,
+  fromMe,
+  fromApi,
+  message
+});    
+
+const isManualHumanMessage =
+  fromMe === true &&
+  fromApi === false &&
+  typeof message === "string" &&
+  message.trim() !== "";
+
+if (isManualHumanMessage) {
+  activateHumanTakeover(phone);
+  console.log("👨‍⚕️ Atendimento manual ativado para:", phone);
+  return;
+}
 
     if (isInHumanTakeover(phone)) {
       console.log("⛔ IA pausada (atendimento humano ativo):", phone);
