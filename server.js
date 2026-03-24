@@ -152,7 +152,11 @@ Use:
 ================================= */
 
 function normalizeText(text = "") {
-  return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  return String(text)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function looksLikeDoctorOrHospital(text) {
@@ -164,21 +168,16 @@ function looksLikeDoctorOrHospital(text) {
     "doutor",
     "doutora",
     "colega medico",
-    "colega médica",
-    "colega medico",
+    "colega medica",
     "medico",
-    "médico",
     "cirurgiao",
-    "cirurgião",
     "bucomaxilo",
     "sobreaviso",
     "chn",
     "plantao",
-    "plantão",
     "parecer",
     "interconsulta",
     "avaliacao hospitalar",
-    "avaliação hospitalar",
     "cti",
     "uti",
     "enfermaria",
@@ -187,8 +186,7 @@ function looksLikeDoctorOrHospital(text) {
     "ps",
     "trauma de face",
     "fratura de face",
-    "equipe medica",
-    "equipe médica"
+    "equipe medica"
   ];
 
   return terms.some(term => t.includes(term));
@@ -201,12 +199,10 @@ function looksUrgent(text) {
     "falta de ar",
     "dificuldade para respirar",
     "nao consigo respirar",
-    "não consigo respirar",
     "muito sangramento",
     "sangramento intenso",
     "sangrando muito",
     "inchaco aumentando",
-    "inchaço aumentando",
     "edema progressivo",
     "febre alta",
     "trauma",
@@ -215,15 +211,11 @@ function looksUrgent(text) {
     "queda",
     "muito inchado",
     "dor insuportavel",
-    "dor insuportável",
     "nao consigo abrir a boca",
-    "não consigo abrir a boca",
     "pus",
     "secrecao",
-    "secreção",
     "desmaiou",
-    "confusao",
-    "confusão"
+    "confusao"
   ];
 
   return terms.some(term => t.includes(term));
@@ -410,6 +402,32 @@ app.post("/webhook", async (req, res) => {
     console.error("ERRO NO WEBHOOK:");
     console.error(error.response?.data || error.message || error);
   }
+});
+
+/* ===== NOVAS ROTAS DE MONITORAMENTO ===== */
+
+app.post("/delivery", (req, res) => {
+  console.log("===== DELIVERY CALLBACK =====");
+  console.log(JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
+
+app.post("/message-status", (req, res) => {
+  console.log("===== MESSAGE STATUS CALLBACK =====");
+  console.log(JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
+
+app.post("/connect", (req, res) => {
+  console.log("===== CONNECT CALLBACK =====");
+  console.log(JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
+
+app.post("/disconnect", (req, res) => {
+  console.log("===== DISCONNECT CALLBACK =====");
+  console.log(JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
 });
 
 /* ===============================
