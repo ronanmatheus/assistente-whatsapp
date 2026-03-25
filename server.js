@@ -26,15 +26,16 @@ const processedMessages = new Map();
 const conversationState = new Map();
 const humanTakeover = new Map();
 
-return conversationState.get(phone) || {
-  stage: "START",
-  name: null,
-  reason: null,
-  hasExam: null,
-  unit: null,
-  selectedSlot: null,
-  patientData: null
-};
+function getState(phone) {
+  return conversationState.get(phone) || {
+    stage: "START",
+    name: null,
+    reason: null,
+    hasExam: null,
+    unit: null,
+    selectedSlot: null,
+    patientData: null
+  };
 }
 
 function updateState(phone, newData) {
