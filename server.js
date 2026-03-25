@@ -844,6 +844,7 @@ const eventType = req.body?.type;
 const messageId = req.body?.messageId;
 const message = req.body?.text?.message || "";
 const rawPhone = req.body?.phone;
+const phone = normalizePhone(rawPhone);
 const fromMe = req.body?.fromMe;
 const fromApi = req.body?.fromApi;
 const instanceId = req.body?.instanceId;
