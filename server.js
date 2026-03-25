@@ -38,7 +38,7 @@ function getState(phone) {
   };
 }
 
-function updateState(phone, newData) {
+function updateState(conversationKey, newData) {
   const current = getState(phone);
   const updated = { ...current, ...newData };
   conversationState.set(phone, updated);
@@ -526,8 +526,8 @@ async function generateSecretaryReply(phone, message) {
   return reply;
 }
 
-async function smartFlow(phone, message) {
-  const state = getState(phone);
+async function smartFlow(conversationKey, message) {
+  const state = getState(conversationKey);
   const text = normalizeText(message);
 
   if (
@@ -550,8 +550,8 @@ async function smartFlow(phone, message) {
   }
 
   if (state.stage === "START") {
-    updateState(phone, { stage: "WAITING_NAME" });
-    return await generateStageReply(phone, message, "ASK_NAME");
+    updateState(conversationKey, { stage: "WAITING_NAME" });
+    return await generateStageReply(conversationKey, message, "ASK_NAME");
   }
 
 if (state.stage === "WAITING_NAME") {
@@ -561,28 +561,28 @@ if (state.stage === "WAITING_NAME") {
     return "Perfeito 😊 Me informa, por favor, seu nome completo para eu seguir com seu atendimento.";
   }
 
-  updateState(phone, {
+  updateState(conversationKey, {
     stage: "WAITING_REASON",
     name: message
   });
 
-  return await generateStageReply(phone, message, "ASK_REASON");
+  return await generateStageReply(conversationKey, message, "ASK_REASON");
 }
 
   if (state.stage === "WAITING_REASON") {
-    updateState(phone, {
+    updateState(conversationKey, {
       stage: "WAITING_EXAM",
       reason: message
     });
-    return await generateStageReply(phone, message, "ASK_EXAM");
+    return await generateStageReply(conversationKey, message, "ASK_EXAM");
   }
 
   if (state.stage === "WAITING_EXAM") {
-    updateState(phone, {
+    updateState(conversationKey, {
       stage: "READY_TO_SCHEDULE",
       hasExam: message
     });
-    return await generateStageReply(phone, message, "ASK_PERIOD");
+    return await generateStageReply(conversationKey, message, "ASK_PERIOD");
   }
 
   if (state.stage === "READY_TO_SCHEDULE") {
@@ -591,7 +591,7 @@ if (state.stage === "WAITING_NAME") {
   if (text.includes("sao goncalo") || text.includes("são gonçalo")) {
     const slots = getAvailableThursdaySlots();
 
-    updateState(phone, {
+    updateState(conversationKey, {
       stage: "WAITING_SLOT",
       unit: "SAO_GONCALO"
     });
@@ -619,7 +619,7 @@ if (state.stage === "WAITING_SLOT") {
 ${formatSlotsForMessage(availableSlots)}`;
   }
 
-  updateState(phone, {
+  updateState(conversationKey, {
     stage: "SLOT_CONFIRMED",
     selectedSlot: message
   });
@@ -669,7 +669,7 @@ function buildSchedulingSummary(state, patientData, patientPhone) {
   if (text.includes("chn") || text.includes("niteroi") || text.includes("niterói")) {
     const slots = getAvailableFridaySlots();
 
-    updateState(phone, {
+    updateState(conversationKey, {
       stage: "WAITING_SLOT",
       unit: "CHN"
     });
@@ -688,7 +688,7 @@ if (state.stage === "SLOT_CONFIRMED") {
 
   const summary = buildSchedulingSummary(state, patientData, phone);
 
-  updateState(phone, {
+  updateState(conversationKey, {
     stage: "SCHEDULING_FINISHED",
     patientData
   });
@@ -710,8 +710,8 @@ Em breve você receberá a confirmação certinha por aqui.`,
   return SAFE_FALLBACK_MESSAGE;
 }
 
-async function generateStageReply(phone, message, stageInstruction) {
-  const state = getState(phone);
+async function generateStageReply(conversationKey, message, stageInstruction) {
+  const state = getState(conversationKey);
 
   if (!ENABLE_OPENAI) {
     if (stageInstruction === "ASK_NAME") {
