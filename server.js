@@ -407,6 +407,30 @@ function looksUrgent(text) {
   return terms.some(term => t.includes(term));
 }
 
+function buildSchedulingSummary(state, patientData, patientPhone) {
+  const unitLabel =
+    state.unit === "SAO_GONCALO"
+      ? "São Gonçalo"
+      : "CHN Niterói";
+
+  const dayLabel =
+    state.unit === "SAO_GONCALO"
+      ? "Quinta-feira"
+      : "Sexta-feira";
+
+  return (
+    `Novo agendamento solicitado\n\n` +
+    `Paciente: ${state.name || "Não informado"}\n` +
+    `Telefone: ${patientPhone}\n` +
+    `Motivo: ${state.reason || "Não informado"}\n` +
+    `Exames: ${state.hasExam || "Não informado"}\n` +
+    `Unidade: ${unitLabel}\n` +
+    `Dia: ${dayLabel}\n` +
+    `Horário: ${state.selectedSlot || "Não informado"}\n\n` +
+    `Dados enviados pelo paciente:\n${patientData}`
+  );
+}
+
 async function classifyMessage(message) {
   if (!ENABLE_OPENAI) {
     if (looksLikeDoctorOrHospital(message)) return "DOCTOR";
@@ -493,12 +517,12 @@ async function notifyDrRonan(instanceId, originalPhone, senderName, originalMess
   }
 }
 
-async function generateSecretaryReply(phone, message) {
+async function generateSecretaryReply(conversationKey, message) {
   if (!ENABLE_OPENAI) {
     return "Olá! Vou te ajudar por aqui. Me informe por favor seu nome completo e o motivo principal do seu contato.";
   }
 
-  const history = getHistory(phone);
+  const history = getHistory(conversationKey);
 
   const input = [
     {
@@ -606,6 +630,24 @@ ${formatSlotsForMessage(slots)}
 Me informe, por favor, qual horário você prefere.`;
   }
 
+ if (text.includes("chn") || text.includes("niteroi") || text.includes("niterói")) {
+    const slots = getAvailableFridaySlots();
+
+    updateState(conversationKey, {
+      stage: "WAITING_SLOT",
+      unit: "CHN"
+    });
+
+    return `Perfeito! 😊
+
+Para atendimento no CHN, em Niterói, na sexta-feira, tenho estes horários disponíveis:
+
+${formatSlotsForMessage(slots)}
+
+Me informe, por favor, qual horário você prefere.`;
+  }
+
+    
 if (state.stage === "WAITING_SLOT") {
   const selectedUnit = state.unit;
 
@@ -676,28 +718,6 @@ Seu agendamento foi registrado com sucesso.
 
 Consulta agendada para ${dayLabel}, às ${finalState.selectedSlot}, em ${unitLabel}.
 
-Em breve você receberá a confirmação final por aqui.`,
-    internalSummary:
-      `Novo agendamento solicitado\n\n` +
-      `Paciente: ${finalState.name || "Não informado"}\n` +
-      `Telefone: ${normalizePhone(conversationKey)}\n` +
-      `Motivo: ${finalState.reason || "Não informado"}\n` +
-      `Exames: ${finalState.hasExam || "Não informado"}\n` +
-      `Unidade: ${unitLabel}\n` +
-      `Dia: ${dayLabel}\n` +
-      `Horário: ${finalState.selectedSlot || "Não informado"}\n` +
-      `CPF: ${finalState.cpf || "Não informado"}\n` +
-      `Nascimento: ${finalState.birthDate || "Não informado"}`
-  };
-}
-    
-
-function buildSchedulingSummary(state, patientData, patientPhone) {
-  const unitLabel =
-    state.unit === "SAO_GONCALO"
-      ? "São Gonçalo"
-      : "CHN Niterói";
-
   const dayLabel =
     state.unit === "SAO_GONCALO"
       ? "Quinta-feira"
@@ -715,38 +735,7 @@ function buildSchedulingSummary(state, patientData, patientPhone) {
     `Dados enviados pelo paciente:\n${patientData}`
   );
 }
-
-  if (text.includes("chn") || text.includes("niteroi") || text.includes("niterói")) {
-    const slots = getAvailableFridaySlots();
-
-    updateState(conversationKey, {
-      stage: "WAITING_SLOT",
-      unit: "CHN"
-    });
-
-    return `Perfeito! 😊
-
-Para atendimento no CHN, em Niterói, na sexta-feira, tenho estes horários disponíveis:
-
-${formatSlotsForMessage(slots)}
-
-Me informe, por favor, qual horário você prefere.`;
-  }
-
-if (state.stage === "SLOT_CONFIRMED") {
-  const patientData = message.trim();
-
-  const summary = buildSchedulingSummary(state, patientData, phone);
-
-  updateState(conversationKey, {
-    stage: "SCHEDULING_FINISHED",
-    patientData
-  });
-
-  return {
-    type: "FINAL_SCHEDULING",
-    patientMessage: `Perfeito! 😊
-
+ 
 Recebi seus dados e já vou deixar seu atendimento encaminhado para continuidade do agendamento.
 
 Em breve você receberá a confirmação certinha por aqui.`,
