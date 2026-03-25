@@ -27,12 +27,14 @@ const conversationState = new Map();
 const humanTakeover = new Map();
 
 function getState(phone) {
-  return conversationState.get(phone) || {
-    stage: "START",
-    name: null,
-    reason: null,
-    hasExam: null
-  };
+return conversationState.get(phone) || {
+  stage: "START",
+  name: null,
+  reason: null,
+  hasExam: null,
+  unit: null,
+  selectedSlot: null
+};
 }
 
 function updateState(phone, newData) {
@@ -326,6 +328,26 @@ function getAvailableThursdaySlots() {
   ];
 }
 
+function getAvailableFridaySlots() {
+  return [
+    "08:00",
+    "08:30",
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30"
+  ];
+}
+
+function formatSlotsForMessage(slots = []) {
+  return slots.map(slot => `• ${slot}`).join("\n");
+}
+
+function isValidSlot(text = "", slots = []) {
+  const normalized = String(text).trim();
+  return slots.includes(normalized);
+}
+
 function looksLikeDoctorOrHospital(text) {
   const t = normalizeText(text);
 
@@ -563,8 +585,80 @@ if (state.stage === "WAITING_NAME") {
   }
 
   if (state.stage === "READY_TO_SCHEDULE") {
-    return await generateStageReply(phone, message, "FORWARD_SCHEDULING");
+  const text = normalizeText(message);
+
+  if (text.includes("sao goncalo") || text.includes("são gonçalo")) {
+    const slots = getAvailableThursdaySlots();
+
+    updateState(phone, {
+      stage: "WAITING_SLOT",
+      unit: "SAO_GONCALO"
+    });
+
+    return `Perfeito! 😊
+
+Para atendimento em São Gonçalo, na quinta-feira, tenho estes horários disponíveis:
+
+${formatSlotsForMessage(slots)}
+
+Me informe, por favor, qual horário você prefere.`;
   }
+
+if (state.stage === "WAITING_SLOT") {
+  const selectedUnit = state.unit;
+
+  const availableSlots =
+    selectedUnit === "SAO_GONCALO"
+      ? getAvailableThursdaySlots()
+      : getAvailableFridaySlots();
+
+  if (!isValidSlot(message, availableSlots)) {
+    return `Tudo bem 😊 Me informe, por favor, um dos horários disponíveis abaixo:
+
+${formatSlotsForMessage(availableSlots)}`;
+  }
+
+  updateState(phone, {
+    stage: "SLOT_CONFIRMED",
+    selectedSlot: message
+  });
+
+  const unitLabel =
+    selectedUnit === "SAO_GONCALO"
+      ? "São Gonçalo, na quinta-feira"
+      : "CHN em Niterói, na sexta-feira";
+
+  return `Perfeito! 😊
+
+Seu horário escolhido foi ${message} para atendimento em ${unitLabel}.
+
+Agora me envie, por favor:
+• nome completo
+• CPF
+• data de nascimento
+
+Assim eu sigo com a organização do seu agendamento.`;
+}
+    
+  if (text.includes("chn") || text.includes("niteroi") || text.includes("niterói")) {
+    const slots = getAvailableFridaySlots();
+
+    updateState(phone, {
+      stage: "WAITING_SLOT",
+      unit: "CHN"
+    });
+
+    return `Perfeito! 😊
+
+Para atendimento no CHN, em Niterói, na sexta-feira, tenho estes horários disponíveis:
+
+${formatSlotsForMessage(slots)}
+
+Me informe, por favor, qual horário você prefere.`;
+  }
+
+  return "Perfeito 😊 Para eu seguir com o seu agendamento, me confirme por favor se você prefere atendimento em São Gonçalo ou no CHN em Niterói.";
+}
 
   return SAFE_FALLBACK_MESSAGE;
 }
