@@ -858,8 +858,6 @@ const conversationKey = getConversationKey(req.body);
       return;
     }
 
-    const phone = normalizePhone(rawPhone);
-
 if (!conversationKey || !phone || !instanceId) {
   console.log("⚠️ Dados insuficientes:", {
     rawPhone,
