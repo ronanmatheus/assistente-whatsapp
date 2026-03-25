@@ -790,14 +790,15 @@ app.post("/webhook", async (req, res) => {
       message: req.body?.text?.message
     });
 
-    const eventType = req.body?.type;
-    const messageId = req.body?.messageId;
-    const message = req.body?.text?.message || "";
-    const rawPhone = req.body?.phone;
-    const fromMe = req.body?.fromMe;
-    const fromApi = req.body?.fromApi;
-    const instanceId = req.body?.instanceId;
-    const senderName = req.body?.senderName || "";
+const eventType = req.body?.type;
+const messageId = req.body?.messageId;
+const message = req.body?.text?.message || "";
+const rawPhone = req.body?.phone;
+const fromMe = req.body?.fromMe;
+const fromApi = req.body?.fromApi;
+const instanceId = req.body?.instanceId;
+const senderName = req.body?.senderName || "";
+const conversationKey = getConversationKey(req.body); 
 
     res.sendStatus(200);
 
@@ -808,10 +809,15 @@ app.post("/webhook", async (req, res) => {
 
     const phone = normalizePhone(rawPhone);
 
-    if (!phone || !instanceId) {
-      console.log("⚠️ Dados insuficientes:", { rawPhone, phone, instanceId });
-      return;
-    }
+if (!conversationKey || !phone || !instanceId) {
+  console.log("⚠️ Dados insuficientes:", {
+    rawPhone,
+    phone,
+    conversationKey,
+    instanceId
+  });
+  return;
+}
 
     const isApiMessage =
       (fromMe === true || fromMe === "true") &&
