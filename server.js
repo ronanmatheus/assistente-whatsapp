@@ -40,9 +40,9 @@ function getState(conversationKey) {
 }
 
 function updateState(conversationKey, newData) {
-  const current = getState(phone);
+  const current = getState(conversationKey);
   const updated = { ...current, ...newData };
-  conversationState.set(phone, updated);
+  conversationState.set(conversationKey, updated);
 }
 
 function clearState(conversationKey) {
@@ -50,22 +50,22 @@ function clearState(conversationKey) {
 }
 
 function getHistory(conversationKey) {
-  return conversationMemory.get(phone) || [];
+  return conversationMemory.get(conversationKey) || [];
 }
 
 function saveHistory(conversationKey, role, content) {
-  const history = conversationMemory.get(phone) || [];
+  const history = conversationMemory.get(conversationKey) || [];
   history.push({ role, content });
 
   if (history.length > 14) {
     history.splice(0, history.length - 14);
   }
 
-  conversationMemory.set(phone, history);
+  conversationMemory.set(conversationKey, history);
 }
 
 function clearHistory(conversationKey) {
-  conversationMemory.delete(phone);
+  conversationMemory.delete(conversationKey);
 }
 
 function alreadyProcessed(messageId) {
