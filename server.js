@@ -26,15 +26,16 @@ const processedMessages = new Map();
 const conversationState = new Map();
 const humanTakeover = new Map();
 
-function getState(phone) {
-  return conversationState.get(phone) || {
+function getState(conversationKey) {
+  return conversationState.get(conversationKey) || {
     stage: "START",
     name: null,
     reason: null,
     hasExam: null,
     unit: null,
     selectedSlot: null,
-    patientData: null
+    cpf: null,
+    birthDate: null
   };
 }
 
@@ -619,9 +620,11 @@ if (state.stage === "WAITING_SLOT") {
 ${formatSlotsForMessage(availableSlots)}`;
   }
 
+  const normalizedSlot = normalizeSlotInput(message);
+
   updateState(conversationKey, {
-    stage: "SLOT_CONFIRMED",
-    selectedSlot: message
+    stage: "WAITING_CPF",
+    selectedSlot: normalizedSlot
   });
 
   const unitLabel =
@@ -631,15 +634,63 @@ ${formatSlotsForMessage(availableSlots)}`;
 
   return `Perfeito! 😊
 
-Seu horário escolhido foi ${message} para atendimento em ${unitLabel}.
+Seu horário escolhido foi ${normalizedSlot} para atendimento em ${unitLabel}.
 
-Agora me envie, por favor:
-• nome completo
-• CPF
-• data de nascimento
-
-Assim eu sigo com a organização do seu agendamento.`;
+Agora me envie, por favor, seu CPF para eu seguir com o agendamento.`;
 }
+
+if (state.stage === "WAITING_CPF") {
+  updateState(conversationKey, {
+    stage: "WAITING_BIRTHDATE",
+    cpf: message.trim()
+  });
+
+  return `Perfeito 😊
+
+Agora me envie, por favor, sua data de nascimento no formato DD/MM/AAAA para eu concluir seu agendamento.`;
+}
+
+    if (state.stage === "WAITING_BIRTHDATE") {
+  updateState(conversationKey, {
+    stage: "SCHEDULING_FINISHED",
+    birthDate: message.trim()
+  });
+
+  const finalState = getState(conversationKey);
+
+  const unitLabel =
+    finalState.unit === "SAO_GONCALO"
+      ? "São Gonçalo"
+      : "CHN Niterói";
+
+  const dayLabel =
+    finalState.unit === "SAO_GONCALO"
+      ? "quinta-feira"
+      : "sexta-feira";
+
+  return {
+    type: "FINAL_SCHEDULING",
+    patientMessage: `Perfeito! 😊
+
+Seu agendamento foi registrado com sucesso.
+
+Consulta agendada para ${dayLabel}, às ${finalState.selectedSlot}, em ${unitLabel}.
+
+Em breve você receberá a confirmação final por aqui.`,
+    internalSummary:
+      `Novo agendamento solicitado\n\n` +
+      `Paciente: ${finalState.name || "Não informado"}\n` +
+      `Telefone: ${normalizePhone(conversationKey)}\n` +
+      `Motivo: ${finalState.reason || "Não informado"}\n` +
+      `Exames: ${finalState.hasExam || "Não informado"}\n` +
+      `Unidade: ${unitLabel}\n` +
+      `Dia: ${dayLabel}\n` +
+      `Horário: ${finalState.selectedSlot || "Não informado"}\n` +
+      `CPF: ${finalState.cpf || "Não informado"}\n` +
+      `Nascimento: ${finalState.birthDate || "Não informado"}`
+  };
+}
+    
 
 function buildSchedulingSummary(state, patientData, patientPhone) {
   const unitLabel =
@@ -665,7 +716,6 @@ function buildSchedulingSummary(state, patientData, patientPhone) {
   );
 }
 
-    
   if (text.includes("chn") || text.includes("niteroi") || text.includes("niterói")) {
     const slots = getAvailableFridaySlots();
 
