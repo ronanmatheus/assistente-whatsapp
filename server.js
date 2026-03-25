@@ -26,14 +26,14 @@ const processedMessages = new Map();
 const conversationState = new Map();
 const humanTakeover = new Map();
 
-function getState(phone) {
 return conversationState.get(phone) || {
   stage: "START",
   name: null,
   reason: null,
   hasExam: null,
   unit: null,
-  selectedSlot: null
+  selectedSlot: null,
+  patientData: null
 };
 }
 
@@ -639,6 +639,31 @@ Agora me envie, por favor:
 
 Assim eu sigo com a organização do seu agendamento.`;
 }
+
+function buildSchedulingSummary(state, patientData, patientPhone) {
+  const unitLabel =
+    state.unit === "SAO_GONCALO"
+      ? "São Gonçalo"
+      : "CHN Niterói";
+
+  const dayLabel =
+    state.unit === "SAO_GONCALO"
+      ? "Quinta-feira"
+      : "Sexta-feira";
+
+  return (
+    `Novo agendamento solicitado\n\n` +
+    `Paciente: ${state.name || "Não informado"}\n` +
+    `Telefone: ${patientPhone}\n` +
+    `Motivo: ${state.reason || "Não informado"}\n` +
+    `Exames: ${state.hasExam || "Não informado"}\n` +
+    `Unidade: ${unitLabel}\n` +
+    `Dia: ${dayLabel}\n` +
+    `Horário: ${state.selectedSlot || "Não informado"}\n\n` +
+    `Dados enviados pelo paciente:\n${patientData}`
+  );
+}
+
     
   if (text.includes("chn") || text.includes("niteroi") || text.includes("niterói")) {
     const slots = getAvailableFridaySlots();
@@ -657,6 +682,27 @@ ${formatSlotsForMessage(slots)}
 Me informe, por favor, qual horário você prefere.`;
   }
 
+if (state.stage === "SLOT_CONFIRMED") {
+  const patientData = message.trim();
+
+  const summary = buildSchedulingSummary(state, patientData, phone);
+
+  updateState(phone, {
+    stage: "SCHEDULING_FINISHED",
+    patientData
+  });
+
+  return {
+    type: "FINAL_SCHEDULING",
+    patientMessage: `Perfeito! 😊
+
+Recebi seus dados e já vou deixar seu atendimento encaminhado para continuidade do agendamento.
+
+Em breve você receberá a confirmação certinha por aqui.`,
+    internalSummary: summary
+  };
+}
+    
   return "Perfeito 😊 Para eu seguir com o seu agendamento, me confirme por favor se você prefere atendimento em São Gonçalo ou no CHN em Niterói.";
 }
 
@@ -850,12 +896,25 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    saveHistory(phone, "user", message);
+saveHistory(conversationKey, "user", message);
 
-    const reply = await smartFlow(phone, message);
+const flowResult = await smartFlow(conversationKey, message);
 
-    saveHistory(phone, "assistant", reply);
-    await sendWhatsAppMessage(instanceId, phone, reply);
+if (
+  typeof flowResult === "object" &&
+  flowResult?.type === "FINAL_SCHEDULING"
+) {
+  saveHistory(conversationKey, "assistant", flowResult.patientMessage);
+
+  await sendWhatsAppMessage(instanceId, DR_RONAN_PHONE, flowResult.internalSummary);
+  await sendWhatsAppMessage(instanceId, phone, flowResult.patientMessage);
+  return;
+}
+
+const reply = flowResult;
+
+saveHistory(conversationKey, "assistant", reply);
+await sendWhatsAppMessage(instanceId, phone, reply);
   } catch (error) {
     console.error("ERRO NO WEBHOOK:");
     console.error(error.response?.data || error.message || error);
