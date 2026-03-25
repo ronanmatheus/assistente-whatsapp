@@ -45,15 +45,15 @@ function updateState(conversationKey, newData) {
   conversationState.set(phone, updated);
 }
 
-function clearState(phone) {
-  conversationState.delete(phone);
+function clearState(conversationKey) {
+  conversationState.delete(conversationKey);
 }
 
-function getHistory(phone) {
+function getHistory(conversationKey) {
   return conversationMemory.get(phone) || [];
 }
 
-function saveHistory(phone, role, content) {
+function saveHistory(conversationKey, role, content) {
   const history = conversationMemory.get(phone) || [];
   history.push({ role, content });
 
@@ -64,7 +64,7 @@ function saveHistory(phone, role, content) {
   conversationMemory.set(phone, history);
 }
 
-function clearHistory(phone) {
+function clearHistory(conversationKey) {
   conversationMemory.delete(phone);
 }
 
@@ -567,7 +567,7 @@ if (state.stage === "WAITING_NAME") {
     name: message
   });
 
-  return await generateStageReply(conversationKey, message, "ASK_REASON");
+  return await generateStageReply(conversationKey, phone, message, "ASK_REASON");
 }
 
   if (state.stage === "WAITING_REASON") {
@@ -583,7 +583,7 @@ if (state.stage === "WAITING_NAME") {
       stage: "READY_TO_SCHEDULE",
       hasExam: message
     });
-    return await generateStageReply(conversationKey, message, "ASK_PERIOD");
+    return await generateStageReply(conversationKey, phone, message, "ASK_EXAM")
   }
 
   if (state.stage === "READY_TO_SCHEDULE") {
