@@ -527,7 +527,7 @@ async function generateSecretaryReply(phone, message) {
   return reply;
 }
 
-async function smartFlow(conversationKey, message) {
+async function smartFlow(conversationKey, phone, message) {
   const state = getState(conversationKey);
   const text = normalizeText(message);
 
@@ -552,7 +552,7 @@ async function smartFlow(conversationKey, message) {
 
   if (state.stage === "START") {
     updateState(conversationKey, { stage: "WAITING_NAME" });
-    return await generateStageReply(conversationKey, message, "ASK_NAME");
+    return await generateStageReply(conversationKey, phone, message, "ASK_NAME");
   }
 
 if (state.stage === "WAITING_NAME") {
@@ -760,7 +760,7 @@ Em breve você receberá a confirmação certinha por aqui.`,
   return SAFE_FALLBACK_MESSAGE;
 }
 
-async function generateStageReply(conversationKey, message, stageInstruction) {
+async function generateStageReply(conversationKey, phone, message, stageInstruction) {
   const state = getState(conversationKey);
 
   if (!ENABLE_OPENAI) {
@@ -956,7 +956,7 @@ if (!conversationKey || !phone || !instanceId) {
 
 saveHistory(conversationKey, "user", message);
 
-const flowResult = await smartFlow(conversationKey, message);
+const flowResult = await smartFlow(conversationKey, phone, message);
 
 if (
   typeof flowResult === "object" &&
