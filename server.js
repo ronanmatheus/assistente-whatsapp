@@ -550,14 +550,12 @@ async function smartFlow(conversationKey, phone, message) {
     return "Claro! O Dr. Ronan atende às quintas-feiras, das 12h às 17h, no consultório em São Gonçalo, e às sextas-feiras, das 08h às 11h, no CHN em Niterói. Se você quiser, eu já posso seguir com o seu agendamento por aqui.";
   }
 
-  if (state.stage === "START") {
-    updateState(conversationKey, { stage: "WAITING_NAME" });
-    return await generateStageReply(conversationKey, phone, message, "ASK_NAME");
-  }
+if (state.stage === "START") {
+  updateState(conversationKey, { stage: "WAITING_NAME" });
+  return await generateStageReply(conversationKey, phone, message, "ASK_NAME");
+}
 
 if (state.stage === "WAITING_NAME") {
-
-  // 🚫 Evita respostas tipo "ok", "tudo bem", etc
   if (!looksLikePersonName(message)) {
     return "Perfeito 😊 Me informa, por favor, seu nome completo para eu seguir com seu atendimento.";
   }
@@ -570,21 +568,23 @@ if (state.stage === "WAITING_NAME") {
   return await generateStageReply(conversationKey, phone, message, "ASK_REASON");
 }
 
-  if (state.stage === "WAITING_REASON") {
-    updateState(conversationKey, {
-      stage: "WAITING_EXAM",
-      reason: message
-    });
-    return await generateStageReply(conversationKey, message, "ASK_EXAM");
-  }
+if (state.stage === "WAITING_REASON") {
+  updateState(conversationKey, {
+    stage: "WAITING_EXAM",
+    reason: message
+  });
 
-  if (state.stage === "WAITING_EXAM") {
-    updateState(conversationKey, {
-      stage: "READY_TO_SCHEDULE",
-      hasExam: message
-    });
-    return await generateStageReply(conversationKey, phone, message, "ASK_EXAM")
-  }
+  return await generateStageReply(conversationKey, phone, message, "ASK_EXAM");
+}
+
+if (state.stage === "WAITING_EXAM") {
+  updateState(conversationKey, {
+    stage: "READY_TO_SCHEDULE",
+    hasExam: message
+  });
+
+  return await generateStageReply(conversationKey, phone, message, "ASK_PERIOD");
+}
 
   if (state.stage === "READY_TO_SCHEDULE") {
   const text = normalizeText(message);
