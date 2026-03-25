@@ -951,12 +951,18 @@ if (
 ) {
   saveHistory(conversationKey, "assistant", flowResult.patientMessage);
 
+  if (DR_RONAN_PHONE) {
   await sendWhatsAppMessage(instanceId, DR_RONAN_PHONE, flowResult.internalSummary);
+} else {
+  console.log("⚠️ DR_RONAN_PHONE não configurado. Resumo interno não enviado.");
+}
   await sendWhatsAppMessage(instanceId, phone, flowResult.patientMessage);
   return;
 }
 
-const reply = flowResult;
+const reply = typeof flowResult === "string"
+  ? flowResult
+  : SAFE_FALLBACK_MESSAGE;
 
 saveHistory(conversationKey, "assistant", reply);
 await sendWhatsAppMessage(instanceId, phone, reply);
